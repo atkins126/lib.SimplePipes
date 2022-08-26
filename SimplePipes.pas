@@ -355,31 +355,40 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TSimplePipe.ConnectPipe;
-var
-{$IFDEF Windows}
-  SourceProcess:  THandle;
-{$ENDIF}
-  TempHandle:     TSPEndpointHandle;
-begin
-If InterlockedLoad(fConnectionDataPtr^.ValidData) <> 0 then
-  begin
+
+  Function ConnectPipeInternal({$IFNDEF Windows}Param: TSPParamInt{$ENDIF}): TSPEndpointHandle;
   {$IFDEF Windows}
+  var
+    SourceProcess:  THandle;
+  begin
     SourceProcess := OpenProcess(PROCESS_DUP_HANDLE,False,fConnectionDataPtr^.CreatorPID);
     If SourceProcess <> 0 then
       try
-        If not Windows.DuplicateHandle(SourceProcess,THandle(PtrInt(fConnectionDataPtr^.EndpointHandle)),GetCurrentProcess,@TempHandle,0,False,DUPLICATE_SAME_ACCESS) then
-          raise ESPHandleDupError.CreateFmt('TSimplePipe.ConnectPipe: Failed to duplicate handle (%d).',[GetLastError]);
+        If not Windows.DuplicateHandle(SourceProcess,THandle(PtrInt(fConnectionDataPtr^.EndpointHandle)),GetCurrentProcess,@Result,0,False,DUPLICATE_SAME_ACCESS) then
+          raise ESPHandleDupError.CreateFmt('TSimplePipe.ConnectPipe.ConnectPipeInternal: Failed to duplicate handle (%d).',[GetLastError]);
       finally
         CloseHandle(SourceProcess);
       end
-    else raise ESPHandleDupError.CreateFmt('TSimplePipe.ConnectPipe: Failed to open source process (%d).',[GetLastError]);
+    else raise ESPHandleDupError.CreateFmt('TSimplePipe.ConnectPipe.ConnectPipeInternal: Failed to open source process (%d).',[GetLastError]);
+
   {$ELSE}
-    TempHandle := TSPEndpointHandle(fConnectionDataPtr^.EndpointHandle);
-    {$message 'todo'}
+  begin
+  {
+    Open symlink file "/proc/[pid]/fd/[file_descriptor]" - it links to the
+    anonymous pipe end given in the connection data.
+  }
+    Result := open(PChar(Format('/proc/%d/fd/%d',[fConnectionDataPtr^.CreatorPID,fConnectionDataPtr^.EndpointHandle])),O_CLOEXEC or Param,0);
+    If Result < 0 then
+      raise ESPSystemError.CreateFmt('TSimplePipe.ConnectPipe.ConnectPipeInternal: Failed to connect named pipe (%d).',[errno_ptr^]);
   {$ENDIF}
+  end;
+
+begin
+If InterlockedLoad(fConnectionDataPtr^.ValidData) <> 0 then
+  begin
     case fEndpointMode of
-      emRead:   fReadHandle := TempHandle;
-      emWrite:  fWriteHandle := TempHandle;
+      emRead:   fReadHandle := ConnectPipeInternal({$IFNDEF Windows}O_RDONLY{$ENDIF});
+      emWrite:  fWriteHandle := ConnectPipeInternal({$IFNDEF Windows}O_WRONLY{$ENDIF});
     else
       raise ESPInvalidMode.CreateFmt('TSimplePipe.ConnectPipe: Invalid endpoint mode (%d).',[Ord(fEndpointMode)]);
     end;
