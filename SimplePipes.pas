@@ -1,3 +1,90 @@
+{-------------------------------------------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-------------------------------------------------------------------------------}
+{===============================================================================
+
+  Simple pipes
+
+    This library provides wrappers for pipes available in different operating
+    systems (currently only Windows and Linux systems are supported). To keep
+    things simple, all pipes provided here are unidirectional (no duplex pipes)
+    and blocking.
+
+    To properly use the pipes, first create a pipe server using a Create*
+    constructor and then create a pipe client using Connect* constructor (note
+    that the ends can be in different threads and even processes). The ends
+    must be in opposite access mode (read-write), so if you create write
+    server, the client must be in read mode, and vice-versa. Failure to do so
+    will result in undefined behaviour and unexpected results.
+
+    Three types of pipes are currently implemented - anonymous pipe (TPipe or
+    TAnonymousPipe), shared pipe (TSharedPipe) and named pipe (TNamedPipe).
+
+      Anonymous pipes do no have name. To connect to an anonymous server, you
+      have to provide binary connection data to the Connect* constructor. These
+      data are exposed on the server via ConnectionData property. How to pass
+      them to the client thread or process is up to you (global memory, shared
+      memory, messages, ...).
+
+      Shared pipes are based on anonymous pipes, but they have a global name
+      (case-insensitive). When you create a server, it stores connection data
+      to a shared memory under its own name. When you want to connect to it,
+      pass the same name to client constructor and it will get the connection
+      data automatically from this shared memory - so you don't have to manage
+      any IPC or other means of data sharing.
+
+      Named pipes works similarly to shared pipes (on the outside, not
+      internally), but they are managed by the operating system. Simply pass
+      the same name to both server and client and you are golden.
+
+        NOTE - names of named pipes are case-insensitive on all systems.
+
+        WARNING - named pipes will not exit their constructors (both server and
+                  client) - ie. will block - until the other end is connected.
+                  This can lead to a deadlocks (especially if you try to create
+                  both ends in the same thread), so be careful.
+
+  Version 1.0 (2022-08-26)
+
+  Last change 2022-08-26
+
+  ©2022 František Milt
+
+  Contacts:
+    František Milt: frantisek.milt@gmail.com
+
+  Support:
+    If you find this code useful, please consider supporting its author(s) by
+    making a small donation using the following link(s):
+
+      https://www.paypal.me/FMilt
+
+  Changelog:
+    For detailed changelog and history please refer to this git repository:
+
+      github.com/TheLazyTomcat/Lib.SimplePipes
+
+  Dependencies:
+    AuxTypes           - github.com/TheLazyTomcat/Lib.AuxTypes
+    AuxClasses         - github.com/TheLazyTomcat/Lib.AuxClasses
+    BitOps             - github.com/TheLazyTomcat/Lib.BitOps
+    HashBase           - github.com/TheLazyTomcat/Lib.HashBase
+    InterlockedOps     - github.com/TheLazyTomcat/Lib.InterlockedOps
+    NamedSharedItems   - github.com/TheLazyTomcat/Lib.NamedSharedItems
+    SHA1               - github.com/TheLazyTomcat/Lib.SHA1
+    SharedMemoryStream - github.com/TheLazyTomcat/Lib.SharedMemoryStream
+    SimpleCPUID        - github.com/TheLazyTomcat/Lib.SimpleCPUID
+  * SimpleFutex        - github.com/TheLazyTomcat/Lib.SimpleFutex
+    StaticMemoryStream - github.com/TheLazyTomcat/Lib.StaticMemoryStream
+    StrRect            - github.com/TheLazyTomcat/Lib.StrRect
+
+  SimpleFutex library is required only when compiling for Linux OS.
+
+===============================================================================}
 unit SimplePipes;
 
 {$IF Defined(WINDOWS) or Defined(MSWINDOWS)}
@@ -183,17 +270,15 @@ uses
 const
   O_CLOEXEC = $80000;
 
-Function errno_ptr: pcInt; cdecl; external name '__errno_location';
-
-Function getpid: pid_t; cdecl; external;
-
 type
   TFDPair = array[0..1] of cInt;
   PFDPair = ^TFDPair;
 
-Function pipe2(pipefd: PFDPair; flags: cInt): cInt; cdecl; external;
+Function errno_ptr: pcInt; cdecl; external name '__errno_location';
 
-//Function dup3(oldfd: cInt; newfd: cInt; flags: cInt): cInt; cdecl; external;
+Function getpid: pid_t; cdecl; external;
+
+Function pipe2(pipefd: PFDPair; flags: cInt): cInt; cdecl; external;
 
 Function mkfifo(pathname: PChar; mode: mode_t): cInt; cdecl; external;
 Function unlink(pathname: PChar): cInt; cdecl; external;
