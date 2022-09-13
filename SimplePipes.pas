@@ -52,10 +52,10 @@
 
   Last change 2022-08-26
 
-  Â©2022 FrantiÅ¡ek Milt
+  ©2022 František Milt
 
   Contacts:
-    FrantiÅ¡ek Milt: frantisek.milt@gmail.com
+    František Milt: frantisek.milt@gmail.com
 
   Support:
     If you find this code useful, please consider supporting its author(s) by
