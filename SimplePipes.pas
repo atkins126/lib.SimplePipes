@@ -48,9 +48,9 @@
                   This can lead to a deadlocks (especially if you try to create
                   both ends in the same thread), so be careful.
 
-  Version 1.1 (2023-01-02)
+  Version 1.1.1 (2023-01-13)
 
-  Last change 2023-01-02
+  Last change 2023-01-13
 
   ©2022-2023 František Milt
 
@@ -200,9 +200,9 @@ type
     procedure Initialize(IsServer: Boolean; EndpointMode: TSPEndpointMode); override;
   public
     constructor CreateReadEnd;
-    constructor CreateWriteEnd;
+    constructor CreateWriteEnd{$IFNDEF FPC}(Dummy: Integer = 0){$ENDIF};
     constructor ConnectReadEnd(ConnectionData: TSPConnectionData);
-    constructor ConnectWriteEnd(ConnectionData: TSPConnectionData);
+    constructor ConnectWriteEnd(ConnectionData: TSPConnectionData{$IFNDEF FPC}; Dummy: Integer = 0{$ENDIF});
     property ConnectionData: TSPConnectionData read fConnectionData;
   end;
 
@@ -556,7 +556,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-constructor TAnonymousPipe.CreateWriteEnd;
+constructor TAnonymousPipe.CreateWriteEnd{$IFNDEF FPC}(Dummy: Integer = 0){$ENDIF};
 begin
 inherited Create;
 Initialize(True,emWrite);
@@ -573,7 +573,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-constructor TAnonymousPipe.ConnectWriteEnd(ConnectionData: TSPConnectionData);
+constructor TAnonymousPipe.ConnectWriteEnd(ConnectionData: TSPConnectionData{$IFNDEF FPC}; Dummy: Integer = 0{$ENDIF});
 begin
 inherited Create;
 fConnectionData := ConnectionData;
